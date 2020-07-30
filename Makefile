@@ -6,10 +6,10 @@ MCU_TYPE = EFM32GG11B420F2048GQ100
 HFXO_VALUE = 8000000UL
 LFXO_VALUE = 32768UL
 APP_ADDRESS = 0x00000000
-APP_NAME = R3FLOW_Firmware
+APP_NAME = R3flow_Firmware
 
 # Multiprocessing
-MAX_PARALLEL = 4
+MAX_PARALLEL = 12
 
 # Directories
 TARGETDIR = bin
@@ -21,8 +21,6 @@ EXCLUDES = src/lvgl src/lvgl/docs src/lvgl/porting src/lvgl/scripts src/lvgl/scr
 
 STRUCT := $(shell find $(SOURCEDIR) -type d)
 STRUCT := $(filter-out $(EXCLUDES), $(STRUCT))
-
-
 
 SOURCEDIRSTRUCT := $(filter-out %/include, $(STRUCT))
 INCLUDEDIRSTRUCT := $(filter %/include, $(STRUCT)) $(DEVICEDIR)/ $(COREDIR)/
@@ -58,7 +56,7 @@ endif
 LDSCRIPT = ld/efm32gg11bx20f2048_app.ld
 
 # Target
-TARGET = $(TARGETDIR)/v$(BUILD_VERSION).$(APP_NAME)
+TARGET = $(TARGETDIR)/$(APP_NAME)
 
 # Sources & objects
 SRCFILES := $(addsuffix /*, $(SOURCEDIRSTRUCT))
@@ -124,18 +122,6 @@ $(OBJECTDIR)/%.o: $(SOURCEDIR)/%.cpp
 
 debug: $(TARGET).elf
 	$(GDB) $(TARGET).elf
-
-inc-version:
-	@echo $$(($(BUILD_VERSION) + 1)) > $(TARGETDIR)/.version
-	@if test -f .vscode/launch.json; then sed -i 's/v$(BUILD_VERSION).$(APP_NAME)/v$(shell echo $$(($(BUILD_VERSION) + 1))).$(APP_NAME)/g' .vscode/launch.json; fi
-
-dec-version:
-	@echo $$(($(BUILD_VERSION) - 1)) > $(TARGETDIR)/.version
-	@if test -f .vscode/launch.json; then sed -i 's/v$(BUILD_VERSION).$(APP_NAME)/v$(shell echo $$(($(BUILD_VERSION) - 1))).$(APP_NAME)/g' .vscode/launch.json; fi
-
-version:
-	@echo Build version: v$(BUILD_VERSION)
-	@echo ---------------------------------------------------------------------------
 
 mem-usage: $(TARGET).elf
 	@echo ---------------------------------------------------------------------------

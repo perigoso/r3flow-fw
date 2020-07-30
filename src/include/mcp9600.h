@@ -6,7 +6,8 @@
 #include "atomic.h"
 #include "systick.h"
 
-#define MCP9600_I2C_ADDR 0x60
+#define MCP9600_I2C_ADDR(n) (0x60 | (n & 0x7))
+//#define MCP9600_I2C_ADDR 0x60
 //#define MCP9600_I2C_ADDR 0x61
 //#define MCP9600_I2C_ADDR 0x62
 //#define MCP9600_I2C_ADDR 0x63

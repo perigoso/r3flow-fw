@@ -6,7 +6,9 @@ uint16_t touchSoundDuration = 50;
 uint8_t touchSoundEnabled = 1;
 
 lv_obj_t* mainTabStartAbortBtn;
-lv_obj_t* mainTabOvenTempLabel;
+lv_obj_t* mainTabOvenTemp1Label;
+lv_obj_t* mainTabOvenTemp2Label;
+lv_obj_t* mainTabOvenTempDeltaLabel;
 lv_obj_t* mainTabOvenTargetTempLabel;
 lv_obj_t* mainTabOvenModeLabel;
 
@@ -123,8 +125,10 @@ void ui_task()
     static uint64_t lastDataUpdate = 0;
     if(g_ullSystemTick > (lastDataUpdate + 200))
     {
-        lv_label_set_text_fmt(mainTabOvenTempLabel, "%.2fC", oven_get_temperature());
+        lv_label_set_text_fmt(mainTabOvenTemp1Label, "%.2fC", oven_get_temperature(1));
         lv_label_set_text_fmt(mainTabOvenTargetTempLabel, "%.2fC", oven_get_target_temperature());
+		lv_label_set_text_fmt(mainTabOvenTemp2Label, "%.2fC", oven_get_temperature(2));
+		lv_label_set_text_fmt(mainTabOvenTempDeltaLabel, "%.2fC", oven_get_temperature(1) - oven_get_target_temperature());
 
         lastDataUpdate = g_ullSystemTick;
     }
@@ -132,7 +136,7 @@ void ui_task()
     static uint64_t lastChartUpdate = 0;
     if(g_ullSystemTick > (lastChartUpdate + 1000))
     {
-        lv_chart_set_next(dataTabChart, dataTabChartTemp, oven_get_temperature());
+        lv_chart_set_next(dataTabChart, dataTabChartTemp, oven_get_temperature(1));
         lv_chart_set_next(dataTabChart, dataTabChartTarget, oven_get_target_temperature());
 
         lastChartUpdate = g_ullSystemTick;
@@ -156,8 +160,11 @@ static void create_main_tab(lv_obj_t * parent)
     lv_obj_align(ovenTempLabel, NULL, LV_ALIGN_IN_TOP_LEFT, 60, 20);
     lv_label_set_text(ovenTempLabel, "Temperature");
 
-    mainTabOvenTempLabel = lv_label_create(parent, NULL);
-    lv_obj_align(mainTabOvenTempLabel, ovenTempLabel, LV_ALIGN_CENTER, 0, 30);
+    mainTabOvenTemp1Label = lv_label_create(parent, NULL);
+    lv_obj_align(mainTabOvenTemp1Label, ovenTempLabel, LV_ALIGN_CENTER, 0, 30);
+
+	mainTabOvenTemp2Label = lv_label_create(parent, NULL);
+    lv_obj_align(mainTabOvenTemp2Label, ovenTempLabel, LV_ALIGN_CENTER, 0, 60);
 
     lv_obj_t* ovenTargetTempLabel = lv_label_create(parent, NULL);
     lv_obj_align(ovenTargetTempLabel, NULL, LV_ALIGN_IN_TOP_RIGHT, -60, 20);
@@ -165,6 +172,9 @@ static void create_main_tab(lv_obj_t * parent)
 
     mainTabOvenTargetTempLabel = lv_label_create(parent, NULL);
     lv_obj_align(mainTabOvenTargetTempLabel, ovenTargetTempLabel, LV_ALIGN_CENTER, 0, 30);
+
+	mainTabOvenTempDeltaLabel = lv_label_create(parent, NULL);
+    lv_obj_align(mainTabOvenTempDeltaLabel, ovenTargetTempLabel, LV_ALIGN_CENTER, 0, 60);
 
     mainTabOvenModeLabel = lv_label_create(parent, NULL);
     lv_obj_align(mainTabOvenModeLabel, NULL, LV_ALIGN_IN_TOP_MID, 0, 20);

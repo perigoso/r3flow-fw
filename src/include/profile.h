@@ -17,7 +17,6 @@ typedef struct profile_node
   float ramp;
   uint32_t minTime;
   uint32_t maxTime;
-  uint32_t maxRampTime;
   struct profile_node* next;
 } profile_node_t;
 
@@ -34,7 +33,7 @@ typedef struct
   profile_direction_t direction;
 } profile_iterator_t;
 
-profile_node_t* profile_node_new(float target, uint32_t time);
+profile_node_t* profile_node_new(float target, float ramp, uint32_t minTime, uint32_t maxTime);
 
 profile_t* profile_new();
 

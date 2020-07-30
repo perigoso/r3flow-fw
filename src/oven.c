@@ -1,10 +1,10 @@
 #include "oven.h"
 
-profile_t* pxProfile;
+profile_t* pxProfile = NULL;
 
 static pid_struct_t *pOvenPID = NULL;
 
-float fOvenTemp, fOvenTargetTemp = 0;
+float fOvenTemp1, fOvenTemp2, fOvenTargetTemp = 0;
 
 ovenMode_t xOvenMode = 4;
 
@@ -96,13 +96,11 @@ void oven_init()
 
     //PRS->ROUTELOC0 |= PRS_ROUTELOC0_CH0LOC_LOC2; // Output Zero Cross for debug purposes
     //PRS->ROUTEPEN |= PRS_ROUTEPEN_CH0PEN;
+}
 
-    pxProfile = profile_new();
-
-    profile_node_t* preheat_node = profile_rpush(pxProfile, profile_node_new(160, 60000));
-    profile_node_t* soak_node = profile_rpush(pxProfile, profile_node_new(190, 60000));
-    profile_node_t* reflow_node = profile_rpush(pxProfile, profile_node_new(230, 60000));
-    profile_node_t* cooldown_node = profile_rpush(pxProfile, profile_node_new(60, 60000));
+void oven_load_profile(profile_t* pprofile)
+{
+	pxProfile = pprofile;
 }
 
 void oven_task()
@@ -117,7 +115,7 @@ void oven_task()
 
         if(ubStatus & MCP9600_TH_UPDT)
         {
-            fOvenTemp = mcp9600_get_hj_temp(0);
+            fOvenTemp1 = mcp9600_get_hj_temp(0);
             //float fCold = mcp9600_get_cj_temp(MCP9600_0);
             //float fDelta = mcp9600_get_temp_delta(MCP9600_0);
 
@@ -125,13 +123,13 @@ void oven_task()
             //mcp9600_set_config(MCP9600_BURST_TS_1 | MCP9600_MODE_NORMAL);
 
             pOvenPID->fDeltaTime = (float)(g_ullSystemTick - ullLastPIDUpdate) * 0.001f;
-            pOvenPID->fValue = fOvenTemp;
+            pOvenPID->fValue = fOvenTemp1;
             pOvenPID->fSetpoint = fOvenTargetTemp;
 
             pid_calc(pOvenPID);
 
             //DBGPRINTLN_CTX("PID - Last update: %llu ms ago", g_ullSystemTick - ullLastPIDUpdate);
-            //DBGPRINTLN_CTX("PID - MCP9600 temp %.3f C", fOvenTemp);
+            //DBGPRINTLN_CTX("PID - MCP9600 temp %.3f C", fOvenTemp1);
             //DBGPRINTLN_CTX("PID - MCP9600 cold %.3f C", fCold);
             //DBGPRINTLN_CTX("PID - MCP9600 delta %.3f C", fDelta);
             //DBGPRINTLN_CTX("PID - temp target %.3f C", pOvenPID->fSetpoint);
@@ -142,10 +140,19 @@ void oven_task()
             ullLastPIDUpdate = g_ullSystemTick;
         }
 
+		ubStatus = mcp9600_get_status(7);
+
+        if(ubStatus & MCP9600_TH_UPDT)
+        {
+            fOvenTemp2 = mcp9600_get_hj_temp(7);
+
+            mcp9600_set_status(7, 0x00);
+        }
+
         ullLastTempCheck = g_ullSystemTick;
     }
 
-    if(g_ullSystemTick > (ullLastStateUpdate + 500))
+    if(g_ullSystemTick > (ullLastStateUpdate + 250))
     {
         static uint64_t ullTimer = 0;
 
@@ -154,7 +161,11 @@ void oven_task()
 
         static ovenMode_t lastMode = ABORT;
 
-        static uint64_t nodeStart;
+        static uint32_t nodeTimer;
+		static uint32_t lastNodeRampInc;
+		static uint32_t lastNodeTicks;
+
+		static uint8_t nextNodeFlag;
 
         switch(xOvenMode)
         {
@@ -162,26 +173,90 @@ void oven_task()
             case REFLOW:     // reflow
                 if(lastMode != REFLOW)
                 {
+					if(!pxProfile)
+					{
+						oven_abort(NO_PROFILE);
+						break;
+					}
+
                     if(it) profile_iterator_destroy(it);
                     it = profile_iterator_new(pxProfile, PROFILE_HEAD);
-                    node = profile_iterator_next(it);
-                    nodeStart = g_ullSystemTick;
-                    fOvenTargetTemp = node->target;
+
+					nextNodeFlag = 1;
                 }
-                if(g_ullSystemTick > (node->minTime + nodeStart))
-                {
-                    if(node = profile_iterator_next(it))
-                    {
-                        nodeStart = g_ullSystemTick;
-                        fOvenTargetTemp = node->target;
-                    }
-                    else
-                    {
-                        fOvenTargetTemp = 0;
-                        xOvenMode = IDLE;
-                    }
-                }
-                break;
+				else
+				{
+					nodeTimer += (g_ullSystemTick - lastNodeTicks);
+					lastNodeTicks = g_ullSystemTick;
+
+					if(fOvenTargetTemp < node->target && nodeTimer >= (lastNodeRampInc + 1000))
+					{
+						fOvenTargetTemp += node->ramp;
+						if(fOvenTargetTemp > node->target)
+							fOvenTargetTemp = node->target;
+
+						lastNodeRampInc = nodeTimer;
+					}
+
+					if(nodeTimer > node->maxTime)
+					{
+						if(oven_get_temperature(1) > (node->target - 10))
+						{
+							nextNodeFlag = 1;
+						}
+						else
+						{
+							nextNodeFlag = 1;
+							//oven_abort(TARGET_UNREACHEAD);
+							//break;
+						}
+					}
+
+					if(oven_get_temperature(1) > (node->target - 10) && oven_get_temperature(1) < (node->target + 10) && nodeTimer >= node->minTime)
+					{
+						nextNodeFlag = 1;
+					}
+				}
+
+				if(nextNodeFlag)
+				{
+					if(node = profile_iterator_next(it))
+					{
+						nodeTimer = 0;
+						lastNodeRampInc = 0;
+						lastNodeTicks = g_ullSystemTick;
+
+						if(!node->ramp)
+						{
+							fOvenTargetTemp = node->target;
+						}
+						else
+						{
+							if(SIGN(node->ramp))
+							{
+								if(oven_get_temperature(1) > node->target)
+									fOvenTargetTemp = node->target;
+								else
+									fOvenTargetTemp = oven_get_temperature(1) + node->ramp;
+							}
+							else
+							{
+								if(oven_get_temperature(1) < node->target)
+									fOvenTargetTemp = node->target;
+								else
+									fOvenTargetTemp = oven_get_temperature(1) + node->ramp;
+							}
+						}
+
+						nextNodeFlag = 0;
+					}
+					else
+					{
+						xOvenMode = IDLE;
+					}
+				}
+
+				break;
 
             case ABORT:
                 break;
@@ -209,9 +284,22 @@ ovenMode_t oven_get_mode()
     return xOvenMode;
 }
 
-float oven_get_temperature()
+float oven_get_temperature(uint8_t ubProbe)
 {
-    return fOvenTemp;
+	switch(ubProbe)
+	{
+	case 1:
+		return fOvenTemp1;
+		break;
+
+	case 2:
+		return fOvenTemp2;
+		break;
+
+	default:
+		return 999.0f;
+		break;
+	}
 }
 
 float oven_get_target_temperature()

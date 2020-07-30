@@ -9,6 +9,7 @@
 #include "nvic.h"
 #include "pac_lookup.h"
 #include "profile.h"
+#include "utils.h"
 
 #define ZEROCROSS_DELAY     10    // us
 #define SSR_LATCH_OFFSET    10       // us
@@ -18,11 +19,11 @@
 #define MAX_PHASE_ANGLE     (PHASE_ANGLE_WIDTH - ZEROCROSS_DEADTIME)
 #define MIN_PHASE_ANGLE     (2 * SSR_LATCH_OFFSET)
 
-#define PID_OPERATING_RANGE 15 // PID starts at (setpoint -+ this value)
+#define PID_OPERATING_RANGE 20 // PID starts at (setpoint -+ this value)
 #define PID_KP  350      // PID Proportional gain
-#define PID_KI  20       // PID Integration gain
-#define PID_KI_CAP  300  // PID Integration gain
-#define PID_KD  10        // PID Derivative gain
+#define PID_KI  0       // PID Integration gain
+#define PID_KI_CAP  200  // PID Integration gain
+#define PID_KD  20       // PID Derivative gain
 
 typedef enum {
     IDLE,
@@ -41,17 +42,19 @@ typedef enum {
     USER_ABORT,
     TEMP_PROB_FAILURE,
     TARGET_UNREACHEAD,
+    NO_PROFILE,
     RESET
 } ovenErr_t;
 
 static const char *ovenERR_str[] = {
-    "erroneous state", "user abort", "temperature probe failure", "target unreached", "reset"
+    "erroneous state", "user abort", "temperature probe failure", "target unreached", "no profile", "reset"
 };
 
 void oven_init();
+void oven_load_profile(profile_t* pprofile);
 void oven_task();
 ovenMode_t oven_get_mode();
-float oven_get_temperature();
+float oven_get_temperature(uint8_t ubProbe);
 float oven_get_target_temperature();
 void oven_start();
 void oven_abort(ovenErr_t cause);

@@ -1,13 +1,21 @@
 #include "profile.h"
 
-profile_node_t* profile_node_new(float target, uint32_t time)
+profile_node_t* profile_node_new(float target, float ramp, uint32_t minTime, uint32_t maxTime)
 {
     profile_node_t* self;
     if(!(self = malloc(sizeof(profile_node_t)))) return NULL;
     self->prev = NULL;
     self->next = NULL;
     self->target = target;
-    self->minTime = time;
+    self->ramp = ramp;
+    self->minTime = minTime;
+
+	if(minTime > maxTime)
+	{
+		maxTime = minTime;
+	}
+
+    self->maxTime = maxTime;
     return self;
 }
 

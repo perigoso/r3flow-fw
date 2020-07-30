@@ -21,7 +21,6 @@
 #include "usart.h"
 #include "i2c.h"
 #include "mcp9600.h"
-#include "pid.h"
 #include "pac_lookup.h"
 #include "sk9822.h"
 #include "lv_disp_ili9488.h"
@@ -405,6 +404,21 @@ int main()
     ui_init();
 
     oven_clr_err();
+
+	profile_t* profile = profile_new();
+
+    profile_node_t* preheatNode = profile_rpush(profile, profile_node_new(150.0f, 0.0f, 0, 120000));
+    profile_node_t* soakNode = profile_rpush(profile, profile_node_new(180.0f, 0.0f, 60000, 120000));
+    profile_node_t* reflowRampNode = profile_rpush(profile, profile_node_new(220.0f, 4.0f, 0, 30000));
+    profile_node_t* reflowNode = profile_rpush(profile, profile_node_new(240.0f, 0.0f, 30000, 90000));
+    profile_node_t* cooldownNode = profile_rpush(profile, profile_node_new(100.0f, 0.0f, 0, 120000));
+
+/*
+	profile_node_t* testNode1 = profile_rpush(profile, profile_node_new(150.0f, 5.f, 120000, 120000));
+	profile_node_t* testNode2 = profile_rpush(profile, profile_node_new(180.0f, 3.f, 120000, 120000));
+	profile_node_t* testNode3 = profile_rpush(profile, profile_node_new(220.0f, 0.f, 120000, 120000));
+*/
+	oven_load_profile(profile);
 
     DBGPRINTLN_CTX("Free RAM: %lu B", get_free_ram());
 

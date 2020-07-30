@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug",
+            "cwd": "${workspaceRoot}",
+            "executable": "./bin/R3flow_Firmware.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "preLaunchTask": "Build",
+            "servertype": "jlink",
+            "device": "EFM32GG11B420F2048",
+            "svdFile": "/opt/cmsis/cmsis-dfp-efm32gg11b/SVD/EFM32GG11B/EFM32GG11B420F2048GQ100.svd",
+            "interface": "swd",
+            "swoConfig": {
+                "enabled": true,
+                "swoFrequency": 6000000,
+                "cpuFrequency": 36000000,
+                "source": "probe",
+                "decoders": [
+                    {
+                        "port": 0,
+                        "label": "Console",
+                        "type": "console",
+                        "showOnStartup": true
+                    }
+                ]
+            }
+        }
+    ]
+}
